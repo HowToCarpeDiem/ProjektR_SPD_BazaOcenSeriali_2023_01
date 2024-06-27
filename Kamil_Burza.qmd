@@ -1,0 +1,292 @@
+---
+title: "Baza ocen seriali"
+author: "Kamil Burza Gr.2"
+editor: visual
+highlight-style: pygments
+title-block-banner: baner4.png
+date: today
+abstract-title: "Kilka ciekawostek o sobie"
+abstract: "Interesuję się branżą muzyczną i filmową. Życie leci mi przy akompaniamencie różnych melodii. Uwielbiam uprawiać i oglądać sport (szczególnie piłkę nożną). Amatorsko gram w szachy, kocham podróżować i poznawać świat. Ukończyłem technikum nr.4 na kierunku informatyk w Tarnowie. Poniżej link do mojego profilu Filmweb:"
+title-block-banner-color: yellow
+format: 
+  html: 
+    toc: true
+    toc-depth: 3
+    toc-location: right
+    toc-title: "Spis treści"
+    number-sections: true
+    number-depth: 3
+    code-fold: show
+    code-summary: "Show the code"
+    code-tools: true
+    code-block-bg: true
+    code-block-border-left: "black"
+    code-line-numbers: false
+    code-copy: true
+    html-math-method: katex
+    embed-resources: true
+    smooth-scroll: true
+    anchor-sections: true
+    link-external-icon: true
+    link-external-newwindow: true
+    theme: cosmo
+    fontsize: 1.1em
+    linestretch: 1.5
+    flutter:
+editor_options: 
+  chunk_output_type: console
+---
+
+<https://www.filmweb.pl/user/HowToCarpeDiem>
+
+::: {layout-ncol="2"}
+![Budapeszt](budapeszt.png)
+
+![Manchester](manchester.png)
+:::
+
+```{r setup, include=F}
+
+
+knitr::opts_chunk$set(
+  echo = T,
+  message = F,
+  warning = F,
+  error = F, 
+  fig.align = "center"
+)
+```
+
+```{r echo = FALSE}
+library(tidyverse)
+library(devtools)
+library(PogromcyDanych)
+library(gdata)
+library(dplyr)
+library(lubridate)
+library(palmerpenguins)
+library(XML)
+library(RCurl)
+library(DT)
+library(openxlsx)
+library(plotly)
+```
+
+## Pozyskanie danych i opis
+
+Wykorzystałem dane z "PogromcówDanych". Zawierają one oceny poszczególnych odcinków seriali z bazy IMDB.
+
+```{r}
+  serialeIMDB <- as_tibble(serialeIMDB)
+  view(serialeIMDB)
+  serialeIMDB
+```
+
+| Kolumna | Opis danych                   |
+|---------|-------------------------------|
+| id      | Unikalny numer id             |
+| Serial  | Nazwa serialu                 |
+| Nazwa   | Nazwa odcinka                 |
+| Sezon   | Numer sezonu                  |
+| Odcinek | Numer odcinku                 |
+| Ocena   | Wysokość oceny użytkowników   |
+| Głosów  | Liczba głosów użytkowników    |
+| imdbid  | Unikalny numer id dla serialu |
+
+## Przetwarzanie potokowe
+
+Wypisuję najlepiej ocenione odcinki z danymi, największą liczbę głosów, najwyższą ocenę oraz tworzę kolumnę z słowną oceną odcinka.
+
+```{r echo=TRUE, warning=FALSE}
+serialeIMDB %>%
+	filter(ocena > 8.2, glosow > 5000) %>%
+		select(serial, nazwa, sezon, odcinek, ocena, glosow) %>%
+	group_by(ocena) ->  NajlepszeOdc
+
+NajlepszeOdc
+
+serialeIMDB %>%
+   summarise(maxgl = max(glosow, na.rm = T),
+              maxoc = max(ocena, na.rm = T))
+
+serialeIMDB %>%
+ mutate(kl_ocena = cut(ocena, breaks = 7, labels = c("Bardzo bardzo słabe", "Bardzo słabe", "Słabe", "Średnie", "Dobre", "Bardzo dobre", "Arcydzieło"))) -> seriale
+
+```
+
+## Interaktywna tabela
+
+Dodana kolumna ocenia słownie dany odcinek, w 7 kategoriach : "Bardzo bardzo słabe", "Bardzo słabe", "Słabe", "Średnie", "Dobre", "Bardzo dobre", "Arcydzieło".
+
+```{r}
+datatable(seriale)
+```
+
+## Funkcja
+
+Funkcja liczy logarytm 2 stopnia dla iloczynu ocen i e od b, podzielonego przez sumę sin x i pierwiastek od najwyższej oceny. Na końcu jest dodawana największa liczba głosów.
+
+```{r}
+obliczenia <- function(ocenaBB, ocename, glosmax, b, x) {
+  x <-  as.numeric(10)
+b <-  as.numeric(20)
+ocename = mean(serialeIMDB$ocena)
+glosmax = max(serialeIMDB$glosow)
+  ((log2(ocenaBB) * exp(b)/sin(x) + sqrt(ocename))+glosmax) 
+plot(ocename, glosmax) ->obl2
+return(obl2)
+}
+#$$((log2(ocenaBB) * exp(b)/sin(x) + sqrt(ocename))+glosmax) -> obl$$
+#obl
+```
+
+## Pętla
+
+Niestety przez problemy z pakietem dplyr, nie byłem w stanie doprowadzić do wyniku. Zostawiłem w poniższym stanie.
+
+```{r}
+
+setwd("D:/ProjektR_SPD_BazaOcen/CSV")
+
+baza <- c("SpongeBob SquarePants", "Phineas and Ferb", "BoJack Horseman")
+sezony <- c(13, 4, 6)
+oceny <- c(7.2,7.6,8.6)
+jeden <- data.frame(baza, sezony, oceny)
+write.csv(jeden, "jeden.csv")
+
+
+baza <- c("Chernobyl", "Rick and Morty", "The Queen's Gambit")
+sezony <- c(1, 6, 1)
+oceny <- c(8.9,8.6,8.2)
+dwa <- data.frame(baza, sezony, oceny)
+write.csv(dwa, "dwa.csv")
+
+baza <- c("Cowboy Bepop", "Vikings", "When They See us")
+sezony <- c(1, 6, 1)
+oceny <- c(8.3,8.4,8.2)
+trzy <- data.frame(baza, sezony, oceny)
+write.csv(trzy, "trzy.csv")
+
+#plikicsv <- c("jeden.csv", "dwa.csv", "trzy.csv")
+ # data_tibble <- tibble()
+
+  
+  #plikicsv |>
+   # map_dfr(.x = _, .f = ~rio::import(file = .)) |>
+    #as_tibble
+
+ 
+setwd("D:/ProjektR_SPD_BazaOcen")
+   # lista_csv <- dir()
+  #lista_csv
+  
+  #df_list <- map(lista_csv, read_csv)
+  #df_list
+  
+  #bind_rows(df_list)
+  #bind_rows(df_list, .id = 'baza')
+  
+  #plikicsv <- dir("CSV")
+  #plikicsv
+  
+  #bind_rows('plikicsv')
+  
+  #dir_ls('plikicsv') %>% 
+  #map_dfr(read_csv, .id = 'jeden')
+
+#for(file in plikicsv) {}
+  
+  
+```
+
+## Wykresy
+
+### Wykres1
+
+```{r}
+seriale %>%
+  filter(serial == "Breaking Bad") %>%
+  select(sezon) -> sezonBB
+
+seriale %>%
+  filter(serial == "Breaking Bad") %>%
+  select(ocena) -> ocenaBB
+
+seriale %>%
+  filter(serial == "Breaking Bad") %>%
+  select(odcinek) -> odcinekBB
+
+danewykres <- data.frame(sezonBB,ocenaBB, odcinekBB)
+danewykres$sezon_i_odcinek <- paste(danewykres$sezon, danewykres$odcinek)
+
+danewykres <- as.tibble(danewykres)
+
+danewykres$sezon <- as.numeric(danewykres$sezon) 
+danewykres$odcinek <- as.numeric(danewykres$odcinek) 
+
+#danewykres$sezon_i_odcinek <- as.numeric(danewykres$sezon_i_odcinek) 
+
+danewykres %>%
+ggplot(., aes(sezon, ocena)) +
+  geom_smooth(color = "black", size = 1.2, linetype = "solid") +
+  labs(title = "Średnia ocena sezonów Breaking Bad przez użytkowników",
+       x = "Sezon",
+       y = "Ocena") +
+  theme(title = element_text(size = 11, face = "bold.italic"),
+        axis.title.x = element_text(size = 12,
+                                    face = "italic"),
+        axis.title.y = element_text(size = 12,
+                                    face = "italic")) -> wykres1
+wykres1
+
+```
+
+### Wykres2
+
+```{r}
+seriale %>%
+  filter(serial == "Game of Thrones") %>%
+  select(ocena) -> ocenaGOT
+view(ocenaGOT)
+seriale %>%
+  filter(serial == "Game of Thrones") %>%
+  select(glosow) -> glosyGOT
+
+danewykresgot <- data.frame(ocenaGOT, glosyGOT)
+
+danewykresgot %>%
+ggplot(., aes(glosow, ocena)) +
+  geom_point(size = 1.3, color = 2, pch = 18, cex = 2) +  
+  labs(title = "Stosunek liczy głosów użytkowników do oceny odcinka Game of Thrones",
+       x = "Głosy",
+       y = "Ocena") +
+  theme(title = element_text(size = 11, face = "bold.italic"),
+        axis.title.x = element_text(size = 15,
+                                    face = "bold"),
+        axis.title.y = element_text(size = 15,
+                                    face = "bold"))-> wykres2
+
+wykres2
+
+
+# scale_x_continuous(limits = c(1,5)) 
+# scale_y_continuous(limits = c(0,10))
+```
+
+## Wykres plotly
+
+Wykres przedstawia średnią ocen w serwisie IMDB oraz zysk 3 najbardziej dochodowych filmów. Najpierw stworzyłem potrzebne dane, następnie wykres, dodałem do niego dodatkową kolumnę.
+
+```{r}
+
+Filmy2 <- c("Avatar", "Avengers: Endgame", "Titanic")
+Dochód_w_USD <- as.numeric(c(2.9, 2.8, 2.2))
+Średnia_ocen_IMDB <- c(7.9, 8.4, 7.9)
+baza4 <- data_frame(Filmy2, Dochód_w_USD, Średnia_ocen_IMDB)
+
+wyk3 <- plot_ly(baza4, x = ~Filmy2, y = ~Dochód_w_USD, type = 'bar', name = 'Dochód w mld USD')
+wyk3 <- wyk3 %>% add_trace(y = ~Średnia_ocen_IMDB, name = 'Średnia ocen IMDB w skali 0-10')
+wyk3 <- wyk3 %>% layout(yaxis = list(title = '0-10'), barmode = 'group')
+
+wyk3
+```
